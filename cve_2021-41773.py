@@ -81,7 +81,7 @@ class ScanResult:
     error: Optional[str]
     vulnerability: VulnerabilityDetection
     response_headers: Dict[str, str] = field(default_factory=dict)
-    timestamp: str = field(default_factory=lambda: datetime.utcnow().isoformat())
+    timestamp: str = field(default_factory=lambda: datetime.now().isoformat())
     is_subdomain: bool = False
 
 @dataclass
@@ -697,22 +697,22 @@ class TargetBuilder:
     def gather_targets(args) -> List[Tuple[str, str, int, bool]]:
         targets = []
         
-        if args.url:
+        if args.u:
             targets.extend(TargetBuilder.build_targets(
-                args.url,
+                args.u,
                 args.s,
                 args.w,
                 args.m,
                 args.e
             ))
         
-        if args.list:
-            if not Path(args.list).is_file():
-                logger.error(f"Target list file not found: {args.list}")
+        if args.l:
+            if not Path(args.l).is_file():
+                logger.error(f"Target list file not found: {args.l}")
                 raise SystemExit(1)
             
             try:
-                with open(args.list, 'r', encoding='utf-8', errors='ignore') as f:
+                with open(args.l, 'r', encoding='utf-8', errors='ignore') as f:
                     for line in f:
                         line = line.strip()
                         if line and not line.startswith('#'):
@@ -816,7 +816,7 @@ class CVEScanner:
         self.http_client = HTTPClient(
             timeout=args.o,
             verify_ssl=args.v,
-            retries=args.retries
+            retries=args.r
         )
         self.response_analyzer = ResponseAnalyzer()
         self.scanner_api = CVEScannerAPI(self.http_client, self.response_analyzer)
@@ -829,13 +829,13 @@ class CVEScanner:
             raise SystemExit(1)
         
         print(f"\n{ColorOutput.CYAN}[*] Scanning {len(targets)} target(s){ColorOutput.RESET}")
-        print(f"{ColorOutput.DIM}Mode: {'DEEP' if self.args.d else 'STANDARD'} | SSL Verify: {self.args.v} | Threads: {self.args.threads}{ColorOutput.RESET}\n")
+        print(f"{ColorOutput.DIM}Mode: {'DEEP' if self.args.d else 'STANDARD'} | SSL Verify: {self.args.v} | Threads: {self.args.t}{ColorOutput.RESET}\n")
         
         vulnerabilities = []
         suspicious = []
         unreachable = []
         
-        with ThreadPoolExecutor(max_workers=self.args.threads) as executor:
+        with ThreadPoolExecutor(max_workers=self.args.t) as executor:
             futures = {}
             
             for scheme, host, port, is_subdomain in targets:
@@ -883,14 +883,14 @@ class CVEScanner:
             print(f"    {ColorOutput.YELLOW}?{ColorOutput.RESET} {susp}")
         
         print(f"{ColorOutput.RED}[✗] Unreachable: {len(unreachable)}{ColorOutput.RESET}")
-        print(f"{ColorOutput.CYAN}[*] Scan completed in {datetime.utcnow().isoformat()}{ColorOutput.RESET}")
+        print(f"{ColorOutput.CYAN}[*] Scan completed in {datetime.now().isoformat()}{ColorOutput.RESET}")
     
     def run_exploit(self) -> None:
-        if not self.args.url:
+        if not self.args.u:
             logger.error("Target URL required (-u)")
             raise SystemExit(1)
         
-        parsed = TargetBuilder.parse_target(self.args.url)
+        parsed = TargetBuilder.parse_target(self.args.u)
         if not parsed:
             logger.error("Failed to parse target URL")
             raise SystemExit(1)
