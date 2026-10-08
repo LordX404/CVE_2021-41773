@@ -1,10 +1,4 @@
-================================================================================
-CVE-2021-41773 APACHE SCANNER
-Multi-Layer Detection | DNS Enumeration | Subdomain Discovery
-================================================================================
 
-OVERVIEW
---------
 Vulnerability scanner for Apache Path Traversal CVEs (2021-41773 and 
 2021-42013). Features multi-layer detection with false positive/negative 
 elimination, DNS-based subdomain enumeration, and internal API for accuracy
