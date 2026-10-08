@@ -33,9 +33,7 @@ Exploit a vulnerable target:
 Execute a command on vulnerable target:
   python3 cve_2021-41773.py -u example.com -x "id"
 
-================================================================================
-COMMAND LINE OPTIONS
-================================================================================
+
 
 TARGET OPTIONS
 -u, -url URL                Target URL or domain (http://example.com)
@@ -61,9 +59,7 @@ PERFORMANCE OPTIONS
 SECURITY OPTIONS
 -v, -verify                 Verify SSL/TLS certificates (default: disabled for self-signed)
 
-================================================================================
-EXAMPLES
-================================================================================
+
 
 EXAMPLE 1: Basic Vulnerability Scan
 -----------------------------------
